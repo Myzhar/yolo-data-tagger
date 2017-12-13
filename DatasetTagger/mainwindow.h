@@ -5,11 +5,11 @@
 #include <QStandardItemModel>
 #include <QStringListModel>
 #include <QModelIndex>
-#include <QGraphicsScene>
-#include <QGraphicsPixmapItem>
 #include <QHash>
+#include <QSettings>
 
 #include "qtrainsetexample.h"
+#include "qimagescene.h"
 
 namespace Ui
 {
@@ -26,17 +26,21 @@ public:
 
 protected slots:
     void onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
+    void onLabelListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
+
+    void loadSettings();
+    void saveSettings();
+
+    void updateImgList();
 
 private slots:
     void on_pushButton_img_folder_clicked();
-
     void on_pushButton_add_label_clicked();
-
     void on_pushButton_remove_label_clicked();
-
     void on_comboBox_currentIndexChanged(int index);
-
     void on_pushButton_base_folder_clicked();
+
+    void on_pushButton_clear_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -47,12 +51,13 @@ private:
     QStandardItemModel* mLabelModel;
     QStringListModel* mImgListModel;
 
-    QGraphicsScene* mScene;
-    QGraphicsPixmapItem* mImgItem;
+    QImageScene* mScene;
 
     int mAutoLabNameCount;
 
     QHash<QString, QTrainSetExample*> mDataSet;
+
+    QSettings* mIniSettings;
 };
 
 #endif // MAINWINDOW_H

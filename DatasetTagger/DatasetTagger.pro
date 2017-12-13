@@ -25,15 +25,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 INCLUDEPATH += ./include
 
 SOURCES += \
-        main.cpp \
-        mainwindow.cpp \
+    main.cpp \
+    mainwindow.cpp \
     src/qtrainsetexample.cpp \
-    src/qobjbbox.cpp
+    src/qobjbbox.cpp \
+    src/qimagescene.cpp
 
 HEADERS += \
-        mainwindow.h \
+    mainwindow.h \
     include/qtrainsetexample.h \
-    include/qobjbbox.h
+    include/qobjbbox.h \
+    include/qimagescene.h
 
 FORMS += \
-        mainwindow.ui
+    mainwindow.ui

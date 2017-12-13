@@ -11,18 +11,19 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow),
     mLabelModel(NULL),
     mImgListModel(NULL),
-    mScene(NULL)
+    mScene(NULL),
+    mIniSettings(NULL)
 {
     ui->setupUi(this);
+
+    loadSettings();
+    updateImgList();
 
     mAutoLabNameCount = 0;
 
     // >>>>> Image Rendering
-    mScene = new QGraphicsScene();
+    mScene = new QImageScene( this );
     ui->graphicsView_image->setScene(mScene);
-    mImgItem = new QGraphicsPixmapItem();
-
-    mScene->addItem( mImgItem );
     // <<<<< Image Rendering
 
     // >>>>> Label table
@@ -32,12 +33,90 @@ MainWindow::MainWindow(QWidget *parent) :
     mLabelModel->setHorizontalHeaderItem(2, new QStandardItem(QString("Color")));
 
     ui->tableView_labels->setModel(mLabelModel);
+
+    QItemSelectionModel* labelSelModel = ui->tableView_labels->selectionModel();
+    connect( labelSelModel, &QItemSelectionModel::currentChanged,
+             this, &MainWindow::onLabelListCurrentChanged );
     // <<<<< Label table
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+
+    if( mIniSettings )
+        delete mIniSettings;
+}
+
+void MainWindow::loadSettings()
+{
+    mBaseFolder = "";
+    mImgFolder = "";
+
+    if( !mIniSettings )
+    {
+        QString iniFile = QApplication::applicationDirPath();
+        if( !iniFile.endsWith("/") )
+        {
+            iniFile += "/";
+        }
+        iniFile += QApplication::applicationName();
+        iniFile+= ".ini";
+
+        mIniSettings = new QSettings( iniFile, QSettings::IniFormat );
+    }
+
+    mBaseFolder = mIniSettings->value( "BASE_FOLDER", QString() ).toString();
+    ui->lineEdit_base_folder_path->setText(mBaseFolder);
+
+    if( !mBaseFolder.isEmpty() )
+    {
+        ui->pushButton_img_folder->setEnabled(true);
+        mImgFolder = mIniSettings->value( "IMAGE_FOLDER", QString() ).toString();
+    }
+    else
+    {
+        ui->pushButton_img_folder->setEnabled(false);
+    }
+
+    ui->lineEdit_img_folder_path->setText(mImgFolder);
+}
+
+void MainWindow::saveSettings()
+{
+    if( !mIniSettings )
+    {
+        QString iniFile = QApplication::applicationDirPath();
+        if( !iniFile.endsWith("/") )
+        {
+            iniFile += "/";
+        }
+        iniFile += QApplication::applicationName();
+        iniFile+= ".ini";
+
+        mIniSettings = new QSettings( iniFile, QSettings::IniFormat );
+    }
+
+    mIniSettings->setValue( "BASE_FOLDER", mBaseFolder );
+    mIniSettings->setValue( "IMAGE_FOLDER", mImgFolder );
+}
+
+
+void MainWindow::onLabelListCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
+{
+    Q_UNUSED(previous);
+
+    QStandardItem* item = mLabelModel->item( current.row(), 2 );
+
+    if( item==NULL )
+    {
+        mScene->enableDrawing(false);
+        return;
+    }
+
+    QColor labelColor = item->background().color();
+
+    mScene->setLabelColor( labelColor );
 }
 
 void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
@@ -56,16 +135,11 @@ void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QMo
     if( image.isNull() )
         return;
 
-    mImgItem->setPixmap( QPixmap::fromImage(image) );
-    mImgItem->setPos( 0,0 );
-    mImgItem->setZValue( -10.0 );
+    mScene->setImage( image );
 
     ui->graphicsView_image->setSceneRect( 0,0, image.width(), image.height() );
-
-
     ui->graphicsView_image->fitInView(QRectF(0,0, image.width(), image.height()),
                                       Qt::KeepAspectRatio );
-
     ui->graphicsView_image->update();
 }
 
@@ -80,20 +154,15 @@ void MainWindow::on_pushButton_base_folder_clicked()
         return;
     }
 
+    saveSettings();
+
     ui->lineEdit_base_folder_path->setText(mBaseFolder);
 
     ui->pushButton_img_folder->setEnabled(true);
 }
 
-void MainWindow::on_pushButton_img_folder_clicked()
+void MainWindow::updateImgList()
 {
-    mImgFolder = QFileDialog::getExistingDirectory( this, tr("Image folder"), mBaseFolder );
-
-    if( mImgFolder.isEmpty() )
-    {
-        return;
-    }
-
     if( mImgListModel )
     {
         QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
@@ -106,9 +175,12 @@ void MainWindow::on_pushButton_img_folder_clicked()
 
     ui->listView_images->setViewMode( QListView::ListMode );
 
-    ui->lineEdit_img_folder_path->setText( mImgFolder );
-
     QDir imgDir( mImgFolder );
+
+    if( !imgDir.exists() )
+    {
+        return;
+    }
 
     QStringList fileTypes;
     fileTypes << "*.jpg" << "*.jpeg" << "*.png";
@@ -137,6 +209,21 @@ void MainWindow::on_pushButton_img_folder_clicked()
         mDataSet[imgFile] = ts;
     }
     // <<<<< Dataset initialization
+}
+
+void MainWindow::on_pushButton_img_folder_clicked()
+{
+    mImgFolder = QFileDialog::getExistingDirectory( this, tr("Image folder"), mBaseFolder );
+
+    if( mImgFolder.isEmpty() )
+    {
+        return;
+    }
+
+    saveSettings();
+    updateImgList();
+
+    ui->lineEdit_img_folder_path->setText( mImgFolder );
 }
 
 
@@ -184,6 +271,10 @@ void MainWindow::on_pushButton_remove_label_clicked()
     for( int i=idx; i<mLabelModel->rowCount(); i++ )
     {
         QStandardItem* idxItem = mLabelModel->item( i, 0 );
+
+        if(!idxItem)
+            continue;
+
         idxItem->setText( tr("%1").arg(i,3,10,QChar('0')) );
     }
 
@@ -195,3 +286,8 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
 }
 
 
+
+void MainWindow::on_pushButton_clear_clicked()
+{
+    mScene->removeAllBBoxes();
+}
