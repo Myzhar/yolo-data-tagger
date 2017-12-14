@@ -24,6 +24,10 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+protected:
+    void updateImgList();
+    void fitImage();
+
 protected slots:
     void onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
     void onLabelListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
@@ -31,7 +35,7 @@ protected slots:
     void loadSettings();
     void saveSettings();
 
-    void updateImgList();
+
 
 private slots:
     void on_pushButton_img_folder_clicked();
@@ -41,6 +45,8 @@ private slots:
     void on_pushButton_base_folder_clicked();
 
     void on_pushButton_clear_clicked();
+
+    void on_pushButton_fit_image_clicked(bool checked);
 
 private:
     Ui::MainWindow *ui;

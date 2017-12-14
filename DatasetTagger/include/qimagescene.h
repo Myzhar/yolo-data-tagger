@@ -14,7 +14,8 @@ public:
     virtual ~QImageScene();
 
     void setImage( QImage& image );
-    void setLabelColor( QColor& color );
+    QSizeF getImageSize();
+    void setBBoxLabel( QString label, QColor& color );
 
     void enableDrawing(bool enable);
     void removeAllBBoxes();
@@ -35,6 +36,8 @@ private:
     QGraphicsRectItem* mCurrBBox;
 
     QColor mLabelColor;
+    QString mLabel;
+
     bool mDrawingEnabled;
 };
 

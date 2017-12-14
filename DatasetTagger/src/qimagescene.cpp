@@ -1,12 +1,16 @@
 #include "qimagescene.h"
 
+#include <QDebug>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsTextItem>
+#include <QTextDocument>
 
 QImageScene::QImageScene(QObject *parent)
     : QGraphicsScene(parent)
     , mImgItem(NULL)
     , mCurrBBox(NULL)
 {
+    mDrawingEnabled = false;
     mImgItem = new QGraphicsPixmapItem();
     addItem( mImgItem );
 }
@@ -37,12 +41,16 @@ void QImageScene::setImage(QImage &image)
     mImgItem->setPixmap( QPixmap::fromImage(image) );
     mImgItem->setPos( 0,0 );
     mImgItem->setZValue( -10.0 );
-
-
 }
 
-void QImageScene::setLabelColor( QColor& color )
+QSizeF QImageScene::getImageSize()
 {
+    return mImgItem->boundingRect().size();
+}
+
+void QImageScene::setBBoxLabel(QString label, QColor& color)
+{
+    mLabel = label;
     mLabelColor = color;
     mDrawingEnabled = true;
 }
@@ -76,10 +84,15 @@ void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         pen.setWidth(5);
 
         newBBox->setPen( pen );
-        newBBox->setBrush( QBrush( QColor(mLabelColor.red(), mLabelColor.green(), mLabelColor.blue(), 50 ) ) );
+        newBBox->setBrush( QBrush( QColor(mLabelColor.red(), mLabelColor.green(), mLabelColor.blue(), 100 ) ) );
 
         QRectF rect = QRectF(mouseScenePos,mouseScenePos).normalized();
         newBBox->setRect( rect );
+
+        QGraphicsTextItem* labelItem = new QGraphicsTextItem( mLabel );
+        labelItem->setParentItem( newBBox );
+        labelItem->setPos( rect.topLeft() );
+        labelItem->setDefaultTextColor( QColor( 255-mLabelColor.red(),255-mLabelColor.green(),255-mLabelColor.blue(),150 ));
 
         addItem( newBBox );
 
@@ -89,7 +102,7 @@ void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     {
         QGraphicsItem* item = itemAt( pt, QTransform() );
 
-        if(!item || item==mImgItem )
+        if( !item || item==mImgItem || dynamic_cast<QGraphicsTextItem*>(item))
             return;
 
         emit removedBBox( item );
@@ -125,6 +138,32 @@ void QImageScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             rect.setBottom(imgRect.height()-1);
 
         mCurrBBox->setRect( rect );
+        foreach (QGraphicsItem* item, mCurrBBox->childItems())
+        {
+            QGraphicsTextItem* txtItem =  dynamic_cast<QGraphicsTextItem*>(item);
+
+            if(txtItem)
+            {
+                txtItem->setPos( rect.topLeft() );
+
+                QFont font = txtItem->font();
+                int fontSize = qMax(2,int(qAbs(rect.height())/4));
+                font.setPixelSize( fontSize );
+                txtItem->setFont( font );
+
+                while( txtItem->boundingRect().width() > rect.width() )
+                {
+                    fontSize = font.pixelSize();
+
+                    fontSize--;
+                    font.setPixelSize( fontSize );
+                    txtItem->setFont( font );
+
+                    if( fontSize<2 )
+                        break;
+                }
+            }
+        }
     }
 }
 

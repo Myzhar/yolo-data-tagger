@@ -5,6 +5,7 @@
 #include <QFileInfoList>
 #include <QDir>
 #include <QColor>
+#include <QWheelEvent>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -116,7 +117,7 @@ void MainWindow::onLabelListCurrentChanged(const QModelIndex &current, const QMo
 
     QColor labelColor = item->background().color();
 
-    mScene->setLabelColor( labelColor );
+    mScene->setBBoxLabel( mLabelModel->item( current.row(), 1 )->text(), labelColor );
 }
 
 void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
@@ -135,12 +136,10 @@ void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QMo
     if( image.isNull() )
         return;
 
+    mScene->removeAllBBoxes();
     mScene->setImage( image );
 
-    ui->graphicsView_image->setSceneRect( 0,0, image.width(), image.height() );
-    ui->graphicsView_image->fitInView(QRectF(0,0, image.width(), image.height()),
-                                      Qt::KeepAspectRatio );
-    ui->graphicsView_image->update();
+    fitImage();
 }
 
 void MainWindow::on_pushButton_base_folder_clicked()
@@ -159,6 +158,16 @@ void MainWindow::on_pushButton_base_folder_clicked()
     ui->lineEdit_base_folder_path->setText(mBaseFolder);
 
     ui->pushButton_img_folder->setEnabled(true);
+}
+
+void MainWindow::fitImage()
+{
+    QSizeF imgSize = mScene->getImageSize();
+
+    ui->graphicsView_image->setSceneRect( 0,0, imgSize.width(), imgSize.height() );
+    ui->graphicsView_image->fitInView(QRectF(0,0, imgSize.width(), imgSize.height()),
+                                      Qt::KeepAspectRatio );
+    ui->graphicsView_image->update();
 }
 
 void MainWindow::updateImgList()
@@ -260,6 +269,8 @@ void MainWindow::on_pushButton_add_label_clicked()
     QList<QStandardItem*> row;
     row << idxItem << labelItem << colorItem;
     mLabelModel->appendRow( row );
+
+    ui->tableView_labels->setCurrentIndex( mLabelModel->index( mLabelModel->rowCount()-1, 1 ) );
 }
 
 void MainWindow::on_pushButton_remove_label_clicked()
@@ -277,7 +288,6 @@ void MainWindow::on_pushButton_remove_label_clicked()
 
         idxItem->setText( tr("%1").arg(i,3,10,QChar('0')) );
     }
-
 }
 
 void MainWindow::on_comboBox_currentIndexChanged(int index)
@@ -285,9 +295,12 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
 
 }
 
-
-
 void MainWindow::on_pushButton_clear_clicked()
 {
     mScene->removeAllBBoxes();
+}
+
+void MainWindow::on_pushButton_fit_image_clicked(bool checked)
+{
+    fitImage();
 }

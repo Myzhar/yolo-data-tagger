@@ -29,13 +29,15 @@ SOURCES += \
     mainwindow.cpp \
     src/qtrainsetexample.cpp \
     src/qobjbbox.cpp \
-    src/qimagescene.cpp
+    src/qimagescene.cpp \
+    src/qenhgraphicsview.cpp
 
 HEADERS += \
     mainwindow.h \
     include/qtrainsetexample.h \
     include/qobjbbox.h \
-    include/qimagescene.h
+    include/qimagescene.h \
+    include/qenhgraphicsview.h
 
 FORMS += \
     mainwindow.ui
