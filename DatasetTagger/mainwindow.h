@@ -26,6 +26,7 @@ public:
 
 protected:
     void updateImgList();
+    void updateBBoxList();
     void fitImage();
 
 protected slots:
@@ -41,12 +42,10 @@ private slots:
     void on_pushButton_img_folder_clicked();
     void on_pushButton_add_label_clicked();
     void on_pushButton_remove_label_clicked();
-    void on_comboBox_currentIndexChanged(int index);
     void on_pushButton_base_folder_clicked();
-
     void on_pushButton_clear_clicked();
-
     void on_pushButton_fit_image_clicked(bool checked);
+    void on_comboBox_ts_perc_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;
@@ -55,7 +54,8 @@ private:
     QString mBaseFolder;
 
     QStandardItemModel* mLabelModel;
-    QStringListModel* mImgListModel;
+    QStringListModel*   mImgListModel;
+    QStringListModel*   mBBoxListModel;
 
     QImageScene* mScene;
 

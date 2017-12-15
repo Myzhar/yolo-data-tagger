@@ -6,12 +6,14 @@
 #include <QDir>
 #include <QColor>
 #include <QWheelEvent>
+#include <QHashIterator>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     mLabelModel(NULL),
     mImgListModel(NULL),
+    mBBoxListModel(NULL),
     mScene(NULL),
     mIniSettings(NULL)
 {
@@ -170,8 +172,21 @@ void MainWindow::fitImage()
     ui->graphicsView_image->update();
 }
 
+void MainWindow::updateBBoxList()
+{
+    if( mBBoxListModel )
+    {
+        QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
+
+        delete mImgListModel;
+        mImgListModel = NULL;
+    }
+}
+
 void MainWindow::updateImgList()
 {
+    ui->comboBox_ts_perc->setCurrentIndex(0);
+
     if( mImgListModel )
     {
         QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
@@ -290,11 +305,6 @@ void MainWindow::on_pushButton_remove_label_clicked()
     }
 }
 
-void MainWindow::on_comboBox_currentIndexChanged(int index)
-{
-
-}
-
 void MainWindow::on_pushButton_clear_clicked()
 {
     mScene->removeAllBBoxes();
@@ -303,4 +313,65 @@ void MainWindow::on_pushButton_clear_clicked()
 void MainWindow::on_pushButton_fit_image_clicked(bool checked)
 {
     fitImage();
+}
+
+void MainWindow::on_comboBox_ts_perc_currentIndexChanged(int index)
+{
+    double perc = 0.0;
+
+    switch(index)
+    {
+    case 1:
+        perc = 0.01;
+        break;
+
+    case 2:
+        perc=0.05;
+        break;
+
+    case 3:
+        perc=0.1;
+        break;
+
+    case 4:
+        perc=0.2;
+        break;
+
+    case 5:
+        perc=0.5;
+        break;
+
+    case 6:
+        perc=1.0;
+        break;
+
+    default:
+        perc = 0.0;
+    }
+
+    double count = mDataSet.count();
+
+    int valCount = static_cast<int>(qRound(count*perc));
+
+    int step = static_cast<int>(qRound(count/valCount));
+
+    int idx=1;
+
+    QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        if( (idx%step)==0 )
+        {
+            iter.value()->setTestSet(true);
+        }
+        else
+        {
+            iter.value()->setTestSet(false);
+        }
+
+        idx++;
+    }
+
 }
