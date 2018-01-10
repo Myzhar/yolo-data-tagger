@@ -97,6 +97,7 @@ void MainWindow::loadSettings()
 
     mBaseFolder = mIniSettings->value( "BASE_FOLDER", QString() ).toString();
     ui->lineEdit_base_folder_path->setText(mBaseFolder);
+    ui->lineEdit_base_folder_path->setToolTip(mBaseFolder);
 
     if( !mBaseFolder.isEmpty() )
     {
@@ -109,6 +110,7 @@ void MainWindow::loadSettings()
     }
 
     ui->lineEdit_img_folder_path->setText(mImgFolder);
+    ui->lineEdit_img_folder_path->setToolTip(mImgFolder);
 }
 
 void MainWindow::saveSettings()
@@ -145,7 +147,11 @@ void MainWindow::onLabelListCurrentChanged(const QModelIndex &current, const QMo
 
     QColor labelColor = item->background().color();
 
-    mScene->setBBoxLabel( mLabelModel->item( current.row(), 1 )->text(), labelColor );
+    QString label = tr("[%1] %2")
+                    .arg(mLabelModel->item( current.row(), 0 )->text())
+                    .arg(mLabelModel->item( current.row(), 1 )->text());
+
+    mScene->setBBoxLabel( label, labelColor );
 }
 
 void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous)
@@ -192,11 +198,12 @@ void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QMo
 
         if( getLabelInfo( labIdx, label, color) )
         {
+            QString fullLabel = tr("[%1] %2")
+                                .arg(labIdx, 3, 10, QChar('0') )
+                                .arg(label);
 
             mDataSet[imageName]->removeBBox( iter.key() );
-            mScene->addBBox( label, color,nx,ny,nw,nh );
-
-
+            mScene->addBBox( fullLabel, color,nx,ny,nw,nh );
         }
     }
 }
@@ -238,6 +245,7 @@ void MainWindow::on_pushButton_base_folder_clicked()
     saveSettings();
 
     ui->lineEdit_base_folder_path->setText(mBaseFolder);
+    ui->lineEdit_base_folder_path->setToolTip(mBaseFolder);
 
     ui->pushButton_img_folder->setEnabled(true);
 }
@@ -338,6 +346,7 @@ void MainWindow::on_pushButton_img_folder_clicked()
     updateImgList();
 
     ui->lineEdit_img_folder_path->setText( mImgFolder );
+    ui->lineEdit_img_folder_path->setToolTip(mImgFolder);
 }
 
 void MainWindow::on_pushButton_add_label_clicked()
