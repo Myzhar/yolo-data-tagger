@@ -1,13 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QDebug>
 #include <QFileDialog>
 #include <QFileInfoList>
 #include <QDir>
 #include <QColor>
 #include <QWheelEvent>
 #include <QHashIterator>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 #include "qobjbbox.h"
 
@@ -28,10 +29,21 @@ MainWindow::MainWindow(QWidget *parent) :
     mAutoLabNameCount = 0;
 
     // >>>>> Image Rendering
-    ui->graphicsView_image->setViewport(new QGLWidget(
-                                            QGLFormat(QGL::SampleBuffers)));
-    ui->graphicsView_image->setViewportUpdateMode(
-        QGraphicsView::FullViewportUpdate);
+    QOpenGLWidget* oglWidget = new QOpenGLWidget( );
+
+    ui->graphicsView_image->setViewport( oglWidget );
+
+    if( oglWidget->isValid() )
+    {
+        qDebug() << tr("OpenGL context succesfully initialized");
+
+        ui->graphicsView_image->setViewportUpdateMode(
+            QGraphicsView::FullViewportUpdate);
+    }
+    else
+    {
+        ui->graphicsView_image->setViewport( new QWidget() );
+    }
 
     mScene = new QImageScene( this );
     ui->graphicsView_image->setScene(mScene);
