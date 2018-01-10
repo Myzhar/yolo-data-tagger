@@ -11,6 +11,8 @@
 #include "qtrainsetexample.h"
 #include "qimagescene.h"
 
+class QGraphicsItem;
+
 namespace Ui
 {
 class MainWindow;
@@ -28,6 +30,7 @@ protected:
     void updateImgList();
     void updateBBoxList();
     void fitImage();
+    bool getLabelInfo(int idx, QString& label, QColor& col, bool setIfMatch=true);
 
 protected slots:
     void onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
@@ -36,7 +39,8 @@ protected slots:
     void loadSettings();
     void saveSettings();
 
-
+    void onNewBbox( QGraphicsItem* item, double nx, double ny, double nw, double nh );
+    void onRemoveBbox( QGraphicsItem* item );
 
 private slots:
     void on_pushButton_img_folder_clicked();

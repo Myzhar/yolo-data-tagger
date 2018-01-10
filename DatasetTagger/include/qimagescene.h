@@ -20,13 +20,15 @@ public:
     void enableDrawing(bool enable);
     void removeAllBBoxes();
 
+    QGraphicsItem* addBBox( QString label, QColor& color, double nx, double ny, double nw, double nh );
+
 protected:
     virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 signals:
-    void newBBox(QGraphicsItem* item, double nx, double ny, double nw, double nh);
+    void newBBox( QGraphicsItem* item, double nx, double ny, double nw, double nh );
     void removedBBox( QGraphicsItem* item );
 
 private:

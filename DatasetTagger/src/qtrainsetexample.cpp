@@ -1,6 +1,7 @@
 #include "include/qtrainsetexample.h"
 
 #include <QDir>
+#include <QHashIterator>
 
 
 QTrainSetExample::QTrainSetExample(QString imgFilename, QObject *parent) : QObject(parent)
@@ -18,13 +19,17 @@ void QTrainSetExample::setRelFolderPath( QString fullPath, QString basePath )
 
 }
 
-void QTrainSetExample::addBBox( int labIdx, double nx, double ny, double nw, double nh )
+void QTrainSetExample::addBBox( quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh )
 {
-    QObjBBox bbox(labIdx,nx,ny,nw,nh);
+    QObjBBox* bbox = new QObjBBox(labIdx,nx,ny,nw,nh);
 
-    mBboxList.push_back( bbox );
+    mBboxMap[bboxIdx] = bbox;
 }
 
+void QTrainSetExample::removeBBox(quint64 bboxIdx )
+{
+    mBboxMap.remove( bboxIdx );
+}
 
 void QTrainSetExample::setFullFolderPath( QString fullPath )
 {
@@ -44,4 +49,36 @@ QString QTrainSetExample::getRelPath()
 void QTrainSetExample::setTestSet(bool testSet)
 {
     mTestSet = testSet;
+}
+
+const QHash<quint64,QObjBBox*>& QTrainSetExample::getBBoxes()
+{
+    return mBboxMap;
+}
+
+QStringList QTrainSetExample::getBboxesStrings()
+{
+    if( mBboxMap.size()==0 )
+        return QStringList();
+
+    QStringList bboxes;
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        QString bboxStr = bbox->getYoloTsLine();
+
+        bboxStr.chop(1); // remove '/n'
+
+        bboxes.push_back( bboxStr);
+    }
+
+    return bboxes;
 }

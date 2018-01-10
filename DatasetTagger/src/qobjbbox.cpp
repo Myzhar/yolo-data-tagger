@@ -6,11 +6,7 @@
 QObjBBox::QObjBBox(int labIdx, double nx, double ny, double nw, double nh)
     : QObject(NULL)
 {
-    mLabelIdx = labIdx;
-    mNormX = nx;
-    mNormY = ny;
-    mNormW = nw;
-    mNormH = nh;
+    setBBox(labIdx,nx,ny,nw,nh);
 }
 
 QObjBBox::QObjBBox( const QObjBBox& other )
@@ -37,13 +33,31 @@ QObjBBox& QObjBBox::operator=( const QObjBBox& other)
     return *this;
 }
 
-QByteArray QObjBBox::getYoloTsLine()
+void QObjBBox::setBBox( int labIdx, double nx, double ny, double nw, double nh )
+{
+    mLabelIdx = labIdx;
+    mNormX = nx;
+    mNormY = ny;
+    mNormW = nw;
+    mNormH = nh;
+}
+
+void QObjBBox::getBBox( int& labIdx, double& nx, double& ny, double& nw, double& nh )
+{
+    labIdx = mLabelIdx;
+    nx = mNormX;
+    ny = mNormY;
+    nw = mNormW;
+    nh = mNormH;
+}
+
+QString QObjBBox::getYoloTsLine()
 {
     QLocale locale( "C" );
     QLocale::setDefault( locale );
 
-    QByteArray res;
-    QTextStream str( res );
+    QString res;
+    QTextStream str( &res, QIODevice::ReadWrite );
     str.setRealNumberNotation(QTextStream::SmartNotation);
     str.setRealNumberPrecision(10);
 

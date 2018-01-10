@@ -7,6 +7,9 @@
 #include <QColor>
 #include <QWheelEvent>
 #include <QHashIterator>
+#include <QGLWidget>
+
+#include "qobjbbox.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -25,8 +28,19 @@ MainWindow::MainWindow(QWidget *parent) :
     mAutoLabNameCount = 0;
 
     // >>>>> Image Rendering
+    ui->graphicsView_image->setViewport(new QGLWidget(
+                                            QGLFormat(QGL::SampleBuffers)));
+    ui->graphicsView_image->setViewportUpdateMode(
+        QGraphicsView::FullViewportUpdate);
+
     mScene = new QImageScene( this );
     ui->graphicsView_image->setScene(mScene);
+
+
+    connect( mScene, &QImageScene::newBBox,
+             this, &MainWindow::onNewBbox );
+    connect( mScene, &QImageScene::removedBBox,
+             this, &MainWindow::onRemoveBbox );
     // <<<<< Image Rendering
 
     // >>>>> Label table
@@ -142,6 +156,60 @@ void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QMo
     mScene->setImage( image );
 
     fitImage();
+
+    //updateBBoxList();
+
+    const QHash<quint64,QObjBBox*> bboxes = mDataSet[imageName]->getBBoxes();
+
+    QHashIterator<quint64,QObjBBox*> iter(bboxes);
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        int labIdx;
+        double nx,ny,nw,nh;
+        bbox->getBBox( labIdx,nx,ny,nw,nh );
+
+        QString label = tr("Test");
+        QColor color;
+
+        if( getLabelInfo( labIdx, label, color) )
+        {
+
+            mDataSet[imageName]->removeBBox( iter.key() );
+            mScene->addBBox( label, color,nx,ny,nw,nh );
+
+
+        }
+    }
+}
+
+bool MainWindow::getLabelInfo( int idx, QString& label, QColor& col, bool setIfMatch)
+{
+    for( int r=0; r<mLabelModel->rowCount(); r++ )
+    {
+        int currIdx = mLabelModel->item( r, 0 )->text().toInt();
+
+        if( currIdx == idx )
+        {
+            label = mLabelModel->item( r, 1 )->text();
+            col = mLabelModel->item( r, 2 )->background().color();
+
+            if(setIfMatch)
+            {
+                ui->tableView_labels->setCurrentIndex( mLabelModel->index( r, 1 ) );
+            }
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void MainWindow::on_pushButton_base_folder_clicked()
@@ -176,11 +244,21 @@ void MainWindow::updateBBoxList()
 {
     if( mBBoxListModel )
     {
-        QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
+        QItemSelectionModel *bboxSelModel = ui->listView_bounding_boxes->selectionModel();
 
-        delete mImgListModel;
-        mImgListModel = NULL;
+        delete mBBoxListModel;
+        mBBoxListModel = NULL;
     }
+
+    QString imageName = mImgListModel->data( ui->listView_images->currentIndex() ).toString();
+
+    if(imageName.isEmpty())
+        return;
+
+    QStringList bboxes = mDataSet[imageName]->getBboxesStrings();
+
+    mBBoxListModel = new QStringListModel(bboxes);
+    ui->listView_bounding_boxes->setModel( mBBoxListModel );
 }
 
 void MainWindow::updateImgList()
@@ -250,7 +328,6 @@ void MainWindow::on_pushButton_img_folder_clicked()
     ui->lineEdit_img_folder_path->setText( mImgFolder );
 }
 
-
 void MainWindow::on_pushButton_add_label_clicked()
 {
     int idx = mLabelModel->rowCount();
@@ -308,6 +385,7 @@ void MainWindow::on_pushButton_remove_label_clicked()
 void MainWindow::on_pushButton_clear_clicked()
 {
     mScene->removeAllBBoxes();
+    updateBBoxList();
 }
 
 void MainWindow::on_pushButton_fit_image_clicked(bool checked)
@@ -374,4 +452,34 @@ void MainWindow::on_comboBox_ts_perc_currentIndexChanged(int index)
         idx++;
     }
 
+}
+
+void MainWindow::onNewBbox(QGraphicsItem *item, double nx, double ny, double nw, double nh)
+{
+    QString imageName = mImgListModel->data( ui->listView_images->currentIndex() ).toString();
+
+    if(imageName.isEmpty())
+        return;
+
+    QModelIndex labelIdx = ui->tableView_labels->currentIndex();
+    QString labIdxStr = mLabelModel->item( labelIdx.row(), 0 )->text();
+
+    if(labIdxStr.isEmpty())
+        return;
+
+    mDataSet[imageName]->addBBox( (quint64)item, labIdxStr.toInt(), nx, ny, nw, nh );
+
+    updateBBoxList();
+}
+
+void MainWindow::onRemoveBbox(QGraphicsItem *item)
+{
+    QString imageName = mImgListModel->data( ui->listView_images->currentIndex() ).toString();
+
+    if(imageName.isEmpty())
+        return;
+
+    mDataSet[imageName]->removeBBox( (quint64)item );
+
+    updateBBoxList();
 }

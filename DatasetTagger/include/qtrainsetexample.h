@@ -2,6 +2,8 @@
 #define QTRAINSETEXAMPLE_H
 
 #include <QObject>
+#include <QHash>
+#include <QStringList>
 #include "qobjbbox.h"
 
 class QTrainSetExample : public QObject
@@ -17,7 +19,12 @@ public:
 
     void setTestSet(bool testSet);
 
-    void addBBox( int labIdx, double nx, double ny, double nw, double nh );
+    void addBBox(quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh );
+    void removeBBox( quint64 bboxIdx );
+
+    QStringList getBboxesStrings();
+    const QHash<quint64,QObjBBox*>& getBBoxes();
+
 signals:
 
 public slots:
@@ -27,9 +34,9 @@ private:
     QString mFullFolderPath;
     QString mRelativeFolderPath;
 
-    bool mTestSet; ///< If true this belogs to TestSet, else TrainingSet
+    bool mTestSet; ///< If true this belongs to TestSet, else TrainingSet
 
-    QList<QObjBBox> mBboxList;
+    QHash<quint64,QObjBBox*> mBboxMap;
 };
 
 #endif // QTRAINSETEXAMPLE_H

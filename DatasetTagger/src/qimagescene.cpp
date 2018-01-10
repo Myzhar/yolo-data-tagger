@@ -32,6 +32,8 @@ void QImageScene::removeAllBBoxes()
             continue;
         }
 
+        emit removedBBox( item );
+
         removeItem(item);
     }
 }
@@ -92,7 +94,7 @@ void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         QGraphicsTextItem* labelItem = new QGraphicsTextItem( mLabel );
         labelItem->setParentItem( newBBox );
         labelItem->setPos( rect.topLeft() );
-        labelItem->setDefaultTextColor( QColor( 255-mLabelColor.red(),255-mLabelColor.green(),255-mLabelColor.blue(),150 ));
+        labelItem->setDefaultTextColor( QColor( (255-mLabelColor.red())/2,(255-mLabelColor.green())/2,(255-mLabelColor.blue())/2,200 ));
 
         addItem( newBBox );
 
@@ -176,6 +178,12 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     {
         QRectF rect = mCurrBBox->rect();
 
+        if( rect.width()<5 || rect.height()<5)
+        {
+            mCurrBBox = NULL;
+            return;
+        }
+
         QRectF scRect = sceneRect();
 
         qreal normX = (rect.topLeft().x()/scRect.width());
@@ -188,4 +196,53 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
         mCurrBBox = NULL;
     }
+}
+
+QGraphicsItem* QImageScene::addBBox( QString label, QColor& color, double nx, double ny, double nw, double nh )
+{
+    QRectF scRect = sceneRect();
+
+    if( scRect.width()==0 || scRect.height()==0 )
+        return NULL;
+
+    QGraphicsRectItem* newBox = new QGraphicsRectItem( );
+
+    newBox->setRect( nx*scRect.width(), ny*scRect.height(),
+                     nw*scRect.width(), nh*scRect.height() );
+
+    addItem( newBox );
+
+    QPen pen( color );
+    pen.setWidth(5);
+
+    newBox->setPen( pen );
+    newBox->setBrush( QBrush( QColor(color.red(), color.green(), color.blue(), 100 ) ) );
+
+    QRectF rect = newBox->rect();
+
+    QGraphicsTextItem* labelItem = new QGraphicsTextItem( label );
+    labelItem->setParentItem( newBox );
+    labelItem->setPos( rect.topLeft() );
+    labelItem->setDefaultTextColor( QColor( (255-color.red())/2,(255-color.green())/2,(255-color.blue())/2,200 ));
+
+    QFont font = labelItem->font();
+    int fontSize = qMax(2,int(qAbs(rect.height())/4));
+    font.setPixelSize( fontSize );
+    labelItem->setFont( font );
+
+    while( labelItem->boundingRect().width() > rect.width() )
+    {
+        fontSize = font.pixelSize();
+
+        fontSize--;
+        font.setPixelSize( fontSize );
+        labelItem->setFont( font );
+
+        if( fontSize<2 )
+            break;
+    }
+
+    emit newBBox( newBox, nx, ny, nw, nh );
+
+    return newBox;
 }
