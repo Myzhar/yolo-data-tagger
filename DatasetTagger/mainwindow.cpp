@@ -9,6 +9,7 @@
 #include <QWheelEvent>
 #include <QHashIterator>
 #include <QOpenGLWidget>
+#include <QTextStream>
 
 #include "qobjbbox.h"
 
@@ -24,9 +25,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     loadSettings();
-    updateImgList();
+
+    if( initDatasetFromFolder() )
+        updateImgList();
 
     mAutoLabNameCount = 0;
+
+    ui->spinBox->setValue(0);
 
     // >>>>> Image Rendering
     QOpenGLWidget* oglWidget = new QOpenGLWidget( );
@@ -264,8 +269,6 @@ void MainWindow::updateBBoxList()
 {
     if( mBBoxListModel )
     {
-        QItemSelectionModel *bboxSelModel = ui->listView_bounding_boxes->selectionModel();
-
         delete mBBoxListModel;
         mBBoxListModel = NULL;
     }
@@ -281,27 +284,13 @@ void MainWindow::updateBBoxList()
     ui->listView_bounding_boxes->setModel( mBBoxListModel );
 }
 
-void MainWindow::updateImgList()
+bool MainWindow::initDatasetFromFolder()
 {
-    ui->comboBox_ts_perc->setCurrentIndex(0);
-
-    if( mImgListModel )
-    {
-        QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
-        disconnect(imgSelModel,&QItemSelectionModel::currentChanged,
-                   this, &MainWindow::onImageListCurrentChanged );
-
-        delete mImgListModel;
-        mImgListModel = NULL;
-    }
-
-    ui->listView_images->setViewMode( QListView::ListMode );
-
     QDir imgDir( mImgFolder );
 
     if( !imgDir.exists() )
     {
-        return;
+        return false;
     }
 
     QStringList fileTypes;
@@ -310,14 +299,10 @@ void MainWindow::updateImgList()
 
     QStringList imgList = imgDir.entryList( fileTypes, QDir::Files|QDir::NoSymLinks, QDir::Name|QDir::Name );
 
-    mImgListModel = new QStringListModel(imgList);
-    ui->listView_images->setModel( mImgListModel );
-
-    QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
-    connect(imgSelModel,&QItemSelectionModel::currentChanged,
-            this, &MainWindow::onImageListCurrentChanged );
-
-    ui->listView_images->setCurrentIndex( QModelIndex());
+    if(imgList.size()==0)
+    {
+        return false;
+    }
 
     // >>>>> Dataset initialization
     mDataSet.clear();
@@ -331,6 +316,55 @@ void MainWindow::updateImgList()
         mDataSet[imgFile] = ts;
     }
     // <<<<< Dataset initialization
+
+    return true;
+}
+
+void MainWindow::updateImgList()
+{
+    int prevRow = ui->listView_images->currentIndex().row();
+
+    if( mDataSet.size()==0 )
+        return;
+
+    if( mImgListModel )
+    {
+        QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
+        disconnect(imgSelModel,&QItemSelectionModel::currentChanged,
+                   this, &MainWindow::onImageListCurrentChanged );
+
+        delete mImgListModel;
+        mImgListModel = NULL;
+    }
+
+    ui->listView_images->setViewMode( QListView::ListMode );
+
+    mImgListModel = new QStandardItemModel();
+
+    QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QTrainSetExample* sample = iter.value();
+
+        mImgListModel->appendRow(new QStandardItem(iter.key()));
+        mImgListModel->setData(mImgListModel->index(mImgListModel->rowCount()-1, 0),
+                               sample->isTestSample()?QBrush(Qt::yellow):QBrush(Qt::lightGray),
+                               Qt::BackgroundRole);
+    }
+
+    mImgListModel->sort( 0 );
+    ui->listView_images->setModel( mImgListModel );
+
+    QItemSelectionModel *imgSelModel = ui->listView_images->selectionModel();
+    connect(imgSelModel,&QItemSelectionModel::currentChanged,
+            this, &MainWindow::onImageListCurrentChanged );
+
+    if( prevRow != -1 )
+    {
+        ui->listView_images->setCurrentIndex( mLabelModel->index( prevRow, 0 ));
+    }
 }
 
 void MainWindow::on_pushButton_img_folder_clicked()
@@ -343,7 +377,9 @@ void MainWindow::on_pushButton_img_folder_clicked()
     }
 
     saveSettings();
-    updateImgList();
+
+    if( initDatasetFromFolder() )
+        updateImgList();
 
     ui->lineEdit_img_folder_path->setText( mImgFolder );
     ui->lineEdit_img_folder_path->setToolTip(mImgFolder);
@@ -369,9 +405,9 @@ void MainWindow::on_pushButton_add_label_clicked()
 
     QStandardItem* colorItem = new QStandardItem();
 
-    quint8 r = (idx+9)*30;
-    quint8 g = (idx+6)*60;
-    quint8 b = (idx+3)*90;
+    quint8 r = (mAutoLabNameCount+9)*30;
+    quint8 g = (mAutoLabNameCount+6)*60;
+    quint8 b = (mAutoLabNameCount+3)*90;
 
     colorItem->setText(  tr("%1,%2,%3").arg(r,3,10,QChar('0')).arg(g,3,10,QChar('0')).arg(b,3,10,QChar('0')) );
     colorItem->setEditable( false );
@@ -409,70 +445,9 @@ void MainWindow::on_pushButton_clear_clicked()
     updateBBoxList();
 }
 
-void MainWindow::on_pushButton_fit_image_clicked(bool checked)
+void MainWindow::on_pushButton_fit_image_clicked()
 {
     fitImage();
-}
-
-void MainWindow::on_comboBox_ts_perc_currentIndexChanged(int index)
-{
-    double perc = 0.0;
-
-    switch(index)
-    {
-    case 1:
-        perc = 0.01;
-        break;
-
-    case 2:
-        perc=0.05;
-        break;
-
-    case 3:
-        perc=0.1;
-        break;
-
-    case 4:
-        perc=0.2;
-        break;
-
-    case 5:
-        perc=0.5;
-        break;
-
-    case 6:
-        perc=1.0;
-        break;
-
-    default:
-        perc = 0.0;
-    }
-
-    double count = mDataSet.count();
-
-    int valCount = static_cast<int>(qRound(count*perc));
-
-    int step = static_cast<int>(qRound(count/valCount));
-
-    int idx=1;
-
-    QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
-    while (iter.hasNext())
-    {
-        iter.next();
-
-        if( (idx%step)==0 )
-        {
-            iter.value()->setTestSet(true);
-        }
-        else
-        {
-            iter.value()->setTestSet(false);
-        }
-
-        idx++;
-    }
-
 }
 
 void MainWindow::onNewBbox(QGraphicsItem *item, double nx, double ny, double nw, double nh)
@@ -503,4 +478,134 @@ void MainWindow::onRemoveBbox(QGraphicsItem *item)
     mDataSet[imageName]->removeBBox( (quint64)item );
 
     updateBBoxList();
+}
+
+void MainWindow::on_spinBox_valueChanged(int arg1)
+{
+    double perc = static_cast<double>(arg1)/100.;
+
+    double count = mDataSet.count();
+
+    int valCount = static_cast<int>(count*perc-0.5);
+
+    int step = static_cast<int>(count/valCount+0.5);
+
+    for( int r=0; r<mImgListModel->rowCount(); r++ )
+    {
+        QString imageName = mImgListModel->data( mImgListModel->index( r,0 ) ).toString();
+
+        if( (r%step)==0 )
+        {
+            mDataSet[imageName]->setTestSet(true);
+        }
+        else
+        {
+            mDataSet[imageName]->setTestSet(false);
+        }
+    }
+
+    updateImgList();
+}
+
+void MainWindow::on_pushButton_save_clicked()
+{
+    QString relPath;
+
+    // >>>>> Train & Test files list on files
+    if( !mImgFolder.endsWith("/") )
+        mImgFolder += "/";
+
+    QString trainFilename = tr("%1train.txt").arg(mImgFolder);
+    QString testFilename = tr("%1test.txt").arg(mImgFolder);
+
+    QFile trainFile(trainFilename);
+    QFile testFile(testFilename);
+
+    if( !trainFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return;
+    }
+
+    if( !testFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return;
+    }
+
+    QTextStream trainStream( &trainFile );
+    QTextStream testStream( &testFile );
+
+    for( int r=0; r<mImgListModel->rowCount(); r++ )
+    {
+        QString imageName = mImgListModel->data( mImgListModel->index( r,0 ) ).toString();
+
+        mDataSet[imageName]->saveYoloFormat();
+
+        if(r==0)
+        {
+            relPath = mDataSet[imageName]->getRelPath();
+            if( !relPath.endsWith("/"))
+                relPath += "/";
+        }
+
+        QString dataLine = mDataSet[imageName]->getRelPath();
+        if( !dataLine.endsWith("/"))
+            dataLine += "/";
+
+        dataLine += imageName;
+
+        if( mDataSet[imageName]->isTestSample() )
+        {
+            testStream << dataLine << endl;
+        }
+        else
+        {
+            trainStream << dataLine << endl;
+        }
+    }
+    // <<<<< Train & Test files list on files
+
+    // >>>>> Label names
+    QString labelFilename = tr("%1label.names").arg(mImgFolder);
+
+    QFile labelFile(labelFilename);
+
+    if( !labelFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return;
+    }
+
+    QTextStream labelsStream( &labelFile );
+
+    int nClasses = mLabelModel->rowCount();
+
+    for( int r=0; r<nClasses; r++ )
+    {
+        QString labelName = mLabelModel->item( r, 1 )->text();
+
+        labelsStream << labelName << endl;
+    }
+    // <<<<< Label names
+
+    // >>>>> Training Set Data
+    QString dataFilename = tr("%1trainingSet.data").arg(mImgFolder);
+
+    QFile dataFile(dataFilename);
+
+    if( !dataFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return;
+    }
+
+    QTextStream dataStream( &dataFile );
+
+    dataStream << tr("classes = %1").arg(nClasses) << endl;
+    dataStream << tr("train   = %1train.txt").arg(relPath) << endl;
+    dataStream << tr("valid   = %1test.txt").arg(relPath) << endl;
+    dataStream << tr("names   = %1label.names").arg(relPath) << endl;
+    dataStream << tr("backup  = backup") << endl;
+    // <<<<< Training Set Data
 }

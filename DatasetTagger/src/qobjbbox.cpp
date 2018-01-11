@@ -51,7 +51,7 @@ void QObjBBox::getBBox( int& labIdx, double& nx, double& ny, double& nw, double&
     nh = mNormH;
 }
 
-QString QObjBBox::getYoloTsLine()
+QString QObjBBox::getYoloBBoxLine()
 {
     QLocale locale( "C" );
     QLocale::setDefault( locale );

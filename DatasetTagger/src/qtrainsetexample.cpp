@@ -2,11 +2,12 @@
 
 #include <QDir>
 #include <QHashIterator>
-
+#include <QTextStream>
 
 QTrainSetExample::QTrainSetExample(QString imgFilename, QObject *parent) : QObject(parent)
 {
     mImageFilename = imgFilename;
+    mTestSet = false;
 }
 
 void QTrainSetExample::setRelFolderPath( QString fullPath, QString basePath )
@@ -51,6 +52,11 @@ void QTrainSetExample::setTestSet(bool testSet)
     mTestSet = testSet;
 }
 
+bool QTrainSetExample::isTestSample()
+{
+    return mTestSet;
+}
+
 const QHash<quint64,QObjBBox*>& QTrainSetExample::getBBoxes()
 {
     return mBboxMap;
@@ -73,7 +79,7 @@ QStringList QTrainSetExample::getBboxesStrings()
         if(!bbox)
             continue;
 
-        QString bboxStr = bbox->getYoloTsLine();
+        QString bboxStr = bbox->getYoloBBoxLine();
 
         bboxStr.chop(1); // remove '/n'
 
@@ -81,4 +87,48 @@ QStringList QTrainSetExample::getBboxesStrings()
     }
 
     return bboxes;
+}
+
+bool QTrainSetExample::saveYoloFormat()
+{
+    QString filename = mFullFolderPath;
+    if(!filename.endsWith("/"))
+    {
+        filename += "/";
+    }
+
+    filename += mImageFilename;
+
+    // >>>>> Remove extension
+    int dotIdx = filename.lastIndexOf( "." );
+    filename.truncate( dotIdx+1 );
+    // <<<<< Remove extension
+
+    filename += "txt";
+
+    QFile bboxFile(filename);
+
+    if( !bboxFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        return false;
+    }
+
+    QTextStream stream( &bboxFile );
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        QString bboxStr = bbox->getYoloBBoxLine();
+
+        stream << bboxStr;
+    }
+
+    return true;
 }

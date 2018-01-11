@@ -180,6 +180,7 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
         if( rect.width()<5 || rect.height()<5)
         {
+            removeItem( mCurrBBox );
             mCurrBBox = NULL;
             return;
         }

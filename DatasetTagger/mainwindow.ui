@@ -117,60 +117,19 @@
         </item>
         <item>
          <widget class="QLabel" name="label">
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(252, 233, 79);</string>
+          </property>
           <property name="text">
            <string>Test set perc.</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="comboBox_ts_perc">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+         <widget class="QSpinBox" name="spinBox">
+          <property name="maximum">
+           <number>100</number>
           </property>
-          <property name="minimumSize">
-           <size>
-            <width>150</width>
-            <height>0</height>
-           </size>
-          </property>
-          <item>
-           <property name="text">
-            <string>NONE</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>1%</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>5%</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>10%</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>20%</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>50%</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>100%</string>
-           </property>
-          </item>
          </widget>
         </item>
        </layout>
@@ -226,6 +185,13 @@
                <string>YOLO</string>
               </property>
              </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_save">
+             <property name="text">
+              <string>Save</string>
+             </property>
             </widget>
            </item>
           </layout>

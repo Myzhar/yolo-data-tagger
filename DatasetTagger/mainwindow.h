@@ -32,6 +32,8 @@ protected:
     void fitImage();
     bool getLabelInfo(int idx, QString& label, QColor& col, bool setIfMatch=true);
 
+    bool initDatasetFromFolder();
+
 protected slots:
     void onImageListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
     void onLabelListCurrentChanged(const QModelIndex &current, const QModelIndex &previous);
@@ -48,8 +50,11 @@ private slots:
     void on_pushButton_remove_label_clicked();
     void on_pushButton_base_folder_clicked();
     void on_pushButton_clear_clicked();
-    void on_pushButton_fit_image_clicked(bool checked);
-    void on_comboBox_ts_perc_currentIndexChanged(int index);
+    void on_pushButton_fit_image_clicked();
+
+    void on_spinBox_valueChanged(int arg1);
+
+    void on_pushButton_save_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -58,7 +63,7 @@ private:
     QString mBaseFolder;
 
     QStandardItemModel* mLabelModel;
-    QStringListModel*   mImgListModel;
+    QStandardItemModel*   mImgListModel;
     QStringListModel*   mBBoxListModel;
 
     QImageScene* mScene;

@@ -14,7 +14,7 @@ public:
     void setBBox( int labIdx, double nx, double ny, double nw, double nh );
     void getBBox( int& labIdx, double& nx, double& ny, double& nw, double& nh );
 
-    QString getYoloTsLine();
+    QString getYoloBBoxLine();
 
 signals:
 
