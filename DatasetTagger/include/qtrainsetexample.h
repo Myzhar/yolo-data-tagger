@@ -28,6 +28,7 @@ public:
     const QHash<quint64,QObjBBox*>& getBBoxes();
 
     bool saveYoloFormat();
+    bool loadYoloFormat();
 
 signals:
 

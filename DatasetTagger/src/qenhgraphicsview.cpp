@@ -36,6 +36,8 @@ void QEnhGraphicsView::wheelEvent ( QWheelEvent * event )
 
 void QEnhGraphicsView::scalingTime(qreal x)
 {
+    Q_UNUSED(x)
+
     qreal factor = 1.0 + qreal(mNumScheduledScalings) / 300.0;
 
     scale(factor, factor);

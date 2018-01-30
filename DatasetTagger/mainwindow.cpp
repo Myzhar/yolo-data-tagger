@@ -26,9 +26,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     loadSettings();
 
-    if( initDatasetFromFolder() )
-        updateImgList();
-
     mAutoLabNameCount = 0;
 
     ui->spinBox->setValue(0);
@@ -72,6 +69,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect( labelSelModel, &QItemSelectionModel::currentChanged,
              this, &MainWindow::onLabelListCurrentChanged );
     // <<<<< Label table
+
+    if( initDatasetFromFolder() )
+        updateImgList();
 }
 
 MainWindow::~MainWindow()
@@ -314,7 +314,11 @@ bool MainWindow::initDatasetFromFolder()
         ts->setRelFolderPath( mImgFolder, mBaseFolder );
 
         mDataSet[imgFile] = ts;
+
+        ts->loadYoloFormat();
     }
+
+    loadLabels();
     // <<<<< Dataset initialization
 
     return true;
@@ -398,7 +402,7 @@ void MainWindow::on_pushButton_add_label_clicked()
     QString label = ui->lineEdit_label->text();
     if( label.isEmpty() )
     {
-        label = tr("Label_%1").arg(mAutoLabNameCount++,3,10,QChar('0'));
+        label = tr("Label_%1").arg(mAutoLabNameCount,3,10,QChar('0'));
     }
     labelItem->setText( label );
     labelItem->setEditable( true );
@@ -420,6 +424,8 @@ void MainWindow::on_pushButton_add_label_clicked()
     mLabelModel->appendRow( row );
 
     ui->tableView_labels->setCurrentIndex( mLabelModel->index( mLabelModel->rowCount()-1, 1 ) );
+
+    mAutoLabNameCount++;
 }
 
 void MainWindow::on_pushButton_remove_label_clicked()
@@ -566,28 +572,7 @@ void MainWindow::on_pushButton_save_clicked()
     }
     // <<<<< Train & Test files list on files
 
-    // >>>>> Label names
-    QString labelFilename = tr("%1label.names").arg(mImgFolder);
-
-    QFile labelFile(labelFilename);
-
-    if( !labelFile.open( QFile::WriteOnly|QFile::Text ) )
-    {
-        // TODO ADD ERROR
-        return;
-    }
-
-    QTextStream labelsStream( &labelFile );
-
-    int nClasses = mLabelModel->rowCount();
-
-    for( int r=0; r<nClasses; r++ )
-    {
-        QString labelName = mLabelModel->item( r, 1 )->text();
-
-        labelsStream << labelName << endl;
-    }
-    // <<<<< Label names
+    saveLabels();
 
     // >>>>> Training Set Data
     QString dataFilename = tr("%1trainingSet.data").arg(mImgFolder);
@@ -602,10 +587,79 @@ void MainWindow::on_pushButton_save_clicked()
 
     QTextStream dataStream( &dataFile );
 
+    int nClasses = mLabelModel->rowCount();
+
     dataStream << tr("classes = %1").arg(nClasses) << endl;
     dataStream << tr("train   = %1train.txt").arg(relPath) << endl;
     dataStream << tr("valid   = %1test.txt").arg(relPath) << endl;
     dataStream << tr("names   = %1label.names").arg(relPath) << endl;
     dataStream << tr("backup  = backup") << endl;
     // <<<<< Training Set Data
+}
+
+bool MainWindow::saveLabels()
+{
+    // >>>>> Label names
+    if( !mImgFolder.endsWith("/") )
+        mImgFolder += "/";
+
+    QString labelFilename = tr("%1label.names").arg(mImgFolder);
+
+    QFile labelFile(labelFilename);
+
+    if( !labelFile.open( QFile::WriteOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return false;
+    }
+
+    QTextStream labelsStream( &labelFile );
+
+    int nClasses = mLabelModel->rowCount();
+
+    for( int r=0; r<nClasses; r++ )
+    {
+        QString labelName = mLabelModel->item( r, 1 )->text();
+
+        labelsStream << labelName << endl;
+    }
+    // <<<<< Label names
+
+    return true;
+}
+
+bool MainWindow::loadLabels()
+{
+    // >>>>> Label names
+    if( !mImgFolder.endsWith("/") )
+        mImgFolder += "/";
+
+    QString labelFilename = tr("%1label.names").arg(mImgFolder);
+
+    QFile labelFile(labelFilename);
+
+    if( !labelFile.open( QFile::ReadOnly|QFile::Text ) )
+    {
+        // TODO ADD ERROR
+        return false;
+    }
+
+    mAutoLabNameCount=0;
+    mLabelModel->clear();
+
+    QTextStream labelsStream( &labelFile );
+
+    while( !labelsStream.atEnd() )
+    {
+        QString label = labelsStream.readLine();
+
+        if( !label.isEmpty() )
+        {
+            ui->lineEdit_label->setText(label);
+            on_pushButton_add_label_clicked();
+        }
+    }
+    // <<<<< Label names
+
+    return true;
 }

@@ -40,6 +40,8 @@ void QImageScene::removeAllBBoxes()
 
 void QImageScene::setImage(QImage &image)
 {
+    setSceneRect( 0,0,image.width(),image.height() );
+
     mImgItem->setPixmap( QPixmap::fromImage(image) );
     mImgItem->setPos( 0,0 );
     mImgItem->setZValue( -10.0 );

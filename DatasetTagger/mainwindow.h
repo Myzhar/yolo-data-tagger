@@ -41,6 +41,9 @@ protected slots:
     void loadSettings();
     void saveSettings();
 
+    bool saveLabels();
+    bool loadLabels();
+
     void onNewBbox( QGraphicsItem* item, double nx, double ny, double nw, double nh );
     void onRemoveBbox( QGraphicsItem* item );
 
