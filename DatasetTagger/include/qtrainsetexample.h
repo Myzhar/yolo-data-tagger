@@ -17,11 +17,12 @@ public:
     void setRelFolderPath( QString fullPath, QString basePath );
     QString getFullPath();
     QString getRelPath();
+    QString getImgName();
 
     void setTestSet(bool testSet);
     bool isTestSample();
 
-    void addBBox(quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh );
+    void addNewBBox(quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh );
     void removeBBox( quint64 bboxIdx );
 
     QStringList getBboxesStrings();
@@ -29,6 +30,10 @@ public:
 
     bool saveYoloFormat();
     bool loadYoloFormat();
+
+    QTrainSetExample* cloneBlur();
+    QTrainSetExample* cloneSaltAndPepper();
+    QTrainSetExample* cloneFlip( int mode );
 
 signals:
 

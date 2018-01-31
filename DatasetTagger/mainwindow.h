@@ -66,7 +66,7 @@ private:
     QString mBaseFolder;
 
     QStandardItemModel* mLabelModel;
-    QStandardItemModel*   mImgListModel;
+    QStandardItemModel* mImgListModel;
     QStringListModel*   mBBoxListModel;
 
     QImageScene* mScene;

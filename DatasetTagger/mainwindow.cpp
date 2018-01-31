@@ -10,6 +10,7 @@
 #include <QHashIterator>
 #include <QOpenGLWidget>
 #include <QTextStream>
+#include <QProgressDialog>
 
 #include "qobjbbox.h"
 
@@ -469,7 +470,7 @@ void MainWindow::onNewBbox(QGraphicsItem *item, double nx, double ny, double nw,
     if(labIdxStr.isEmpty())
         return;
 
-    mDataSet[imageName]->addBBox( (quint64)item, labIdxStr.toInt(), nx, ny, nw, nh );
+    mDataSet[imageName]->addNewBBox( (quint64)item, labIdxStr.toInt(), nx, ny, nw, nh );
 
     updateBBoxList();
 }
@@ -515,6 +516,155 @@ void MainWindow::on_spinBox_valueChanged(int arg1)
 
 void MainWindow::on_pushButton_save_clicked()
 {
+    QProgressDialog prgDlg( this );
+    prgDlg.setWindowTitle( tr("Saving...") );
+    prgDlg.setCancelButton( 0 );
+
+    prgDlg.setWindowModality(Qt::WindowModal);
+
+    int count = 0;
+
+    if( ui->groupBox_augmentation->isChecked() )
+    {
+        if( ui->checkBox_aug_H_flip->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding Horiz. flipped samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHash<QString, QTrainSetExample*> newDS = mDataSet;
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneFlip(1);
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    newDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            mDataSet = newDS;
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_V_flip->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding Vert. flipped samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHash<QString, QTrainSetExample*> newDS = mDataSet;
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneFlip(0);
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    newDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            mDataSet = newDS;
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_salt_pepper->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Salt&Pepper images and update list
+            prgDlg.setLabelText( tr("Adding Salt&Pepper samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHash<QString, QTrainSetExample*> newDS = mDataSet;
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneSaltAndPepper();
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    newDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            mDataSet = newDS;
+            // <<<<< Add Salt&Pepper images and update list
+        }
+
+        if( ui->checkBox_aug_blur->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add blurred images and update list
+
+            prgDlg.setLabelText( tr("Adding Blurred samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+
+            QHash<QString, QTrainSetExample*> newDS = mDataSet;
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* blurSample = sample->cloneBlur();
+
+                if(blurSample)
+                {
+                    blurSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    newDS[blurSample->getImgName()] = blurSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            mDataSet = newDS;
+            // <<<<< Add blurred images and update list
+        }
+    }
+
     QString relPath;
 
     // >>>>> Train & Test files list on files
@@ -542,13 +692,20 @@ void MainWindow::on_pushButton_save_clicked()
     QTextStream trainStream( &trainFile );
     QTextStream testStream( &testFile );
 
-    for( int r=0; r<mImgListModel->rowCount(); r++ )
+    prgDlg.setLabelText( tr("Saving Samples data...") );
+    prgDlg.setMaximum(mDataSet.size());
+    count = 0;
+
+    QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+    while (iter.hasNext())
     {
-        QString imageName = mImgListModel->data( mImgListModel->index( r,0 ) ).toString();
+        iter.next();
+
+        QString imageName = iter.value()->getImgName();
 
         mDataSet[imageName]->saveYoloFormat();
 
-        if(r==0)
+        if(!iter.hasPrevious())
         {
             relPath = mDataSet[imageName]->getRelPath();
             if( !relPath.endsWith("/"))
@@ -569,6 +726,8 @@ void MainWindow::on_pushButton_save_clicked()
         {
             trainStream << dataLine << endl;
         }
+
+        prgDlg.setValue( ++count );
     }
     // <<<<< Train & Test files list on files
 

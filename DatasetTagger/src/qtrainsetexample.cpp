@@ -6,6 +6,11 @@
 #include <QTextStream>
 #include <QString>
 #include <QStringList>
+#include <QRandomGenerator>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 QTrainSetExample::QTrainSetExample(QString imgFilename, QObject *parent) : QObject(parent)
 {
@@ -23,7 +28,7 @@ void QTrainSetExample::setRelFolderPath( QString fullPath, QString basePath )
 
 }
 
-void QTrainSetExample::addBBox( quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh )
+void QTrainSetExample::addNewBBox( quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh )
 {
     QObjBBox* bbox = new QObjBBox(labIdx,nx,ny,nw,nh);
 
@@ -48,6 +53,11 @@ QString QTrainSetExample::getFullPath()
 QString QTrainSetExample::getRelPath()
 {
     return mRelativeFolderPath;
+}
+
+QString QTrainSetExample::getImgName()
+{
+    return mImageFilename;
 }
 
 void QTrainSetExample::setTestSet(bool testSet)
@@ -242,4 +252,238 @@ bool QTrainSetExample::loadYoloFormat()
     }*/
 
     return true;
+}
+
+QTrainSetExample* QTrainSetExample::cloneBlur()
+{
+    // >>>>> 1) Open sample image
+    QString origFullPathName = mFullFolderPath;
+    if( !origFullPathName.endsWith("/"))
+        origFullPathName += "/";
+
+    origFullPathName += mImageFilename;
+    cv::Mat orig = cv::imread( origFullPathName.toStdString() );
+
+    if( orig.empty() )
+    {
+        qDebug() << tr("Error generation Blurred image: %1 not opened").arg(mFullFolderPath);
+        return nullptr;
+    }
+    // <<<<< 1) Open sample image
+
+    // >>>>> 2) Apply BLUR
+    cv::Mat blurred;
+
+    cv::blur( orig, blurred, cv::Size(7,7) );
+    cv::blur( blurred, blurred, cv::Size(5,5) );
+    // <<<<< 2) Apply BLUR
+
+    // >>>>> 3) Save image and create new Dataset sample updating Bounding Boxes
+    QString newImageFilename = mImageFilename;
+    int dotIdx = newImageFilename.lastIndexOf( "." );
+    newImageFilename.insert( dotIdx, "_B" );
+
+    QTrainSetExample* newTs = new QTrainSetExample(newImageFilename);
+
+    newTs->mFullFolderPath = mFullFolderPath;
+    newTs->mRelativeFolderPath = mRelativeFolderPath;
+
+    QString fullPathName = mFullFolderPath;
+    if( !fullPathName.endsWith("/"))
+        fullPathName += "/";
+
+    fullPathName += newImageFilename;
+
+    cv::imwrite( fullPathName.toStdString(), blurred );
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    int idx = 0;
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        newTs->addNewBBox( ++idx, bbox->mLabelIdx, bbox->mNormX, bbox->mNormY, bbox->mNormW, bbox->mNormH );
+    }
+    // <<<<< 3) Save image and create new Dataset sample updating Bounding Boxes
+
+    return newTs;
+}
+
+QTrainSetExample* QTrainSetExample::cloneSaltAndPepper()
+{
+    // >>>>> 1) Open sample image
+    QString origFullPathName = mFullFolderPath;
+    if( !origFullPathName.endsWith("/"))
+        origFullPathName += "/";
+
+    origFullPathName += mImageFilename;
+    cv::Mat orig = cv::imread( origFullPathName.toStdString() );
+
+    if( orig.empty() )
+    {
+        qDebug() << tr("Error generation Blurred image: %1 not opened").arg(mFullFolderPath);
+        return nullptr;
+    }
+    // <<<<< 1) Open sample image
+
+    // >>>>> 2) Add Salt and Pepper noise
+    cv::Mat noised;
+    orig.copyTo(noised);
+
+    double salt_vs_pepper = 0.2;
+    double amount = 0.004;
+
+    int num_salt = static_cast<int>( ceil(amount * noised.size().area() * salt_vs_pepper) );
+    int num_pepper = static_cast<int>( ceil(amount * noised.size().area() * (1.0 - salt_vs_pepper)) );
+
+    QRandomGenerator rnd;
+
+    cv::Vec3b salt(255,255,255);
+
+    for( int s=0; s<num_salt; s++ )
+    {
+        quint32 x = rnd.bounded(noised.cols);
+        quint32 y = rnd.bounded(noised.rows);
+
+        noised.at<cv::Vec3b>(y,x) =salt;
+    }
+
+    cv::Vec3b pepper(0,0,0);
+    for( int s=0; s<num_pepper; s++ )
+    {
+        quint32 x = rnd.bounded(noised.cols);
+        quint32 y = rnd.bounded(noised.rows);
+
+        noised.at<cv::Vec3b>(y,x)=pepper;
+    }
+    // <<<<< 2) Add Salt and Pepper noise
+
+    // >>>>> 3) Save image and create new Dataset sample updating Bounding Boxes
+    QString newImageFilename = mImageFilename;
+    int dotIdx = newImageFilename.lastIndexOf( "." );
+    newImageFilename.insert( dotIdx, "_SP" );
+    QTrainSetExample* newTs = new QTrainSetExample(newImageFilename);
+
+    newTs->mFullFolderPath = mFullFolderPath;
+    newTs->mRelativeFolderPath = mRelativeFolderPath;
+
+    QString fullPathName = mFullFolderPath;
+    if( !fullPathName.endsWith("/"))
+        fullPathName += "/";
+
+    fullPathName += newImageFilename;
+
+    cv::imwrite( fullPathName.toStdString(), noised );
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    int idx = 0;
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        newTs->addNewBBox( ++idx, bbox->mLabelIdx, bbox->mNormX, bbox->mNormY, bbox->mNormW, bbox->mNormH );
+    }
+    // <<<<< 3) Save image and create new Dataset sample updating Bounding Boxes
+
+    return newTs;
+}
+
+QTrainSetExample* QTrainSetExample::cloneFlip( int mode )
+{
+    // >>>>> 1) Open sample image
+    QString origFullPathName = mFullFolderPath;
+    if( !origFullPathName.endsWith("/"))
+        origFullPathName += "/";
+
+    origFullPathName += mImageFilename;
+    cv::Mat orig = cv::imread( origFullPathName.toStdString() );
+
+    if( orig.empty() )
+    {
+        qDebug() << tr("Error generation Blurred image: %1 not opened").arg(mFullFolderPath);
+        return nullptr;
+    }
+    // <<<<< 1) Open sample image
+
+    // >>>>> 2) Flip Image
+    cv::Mat flipped;
+
+    if( mode==0 )
+    {
+        cv::flip( orig, flipped, 0 );
+    }
+    else
+    {
+        cv::flip( orig, flipped, 1 );
+    }
+
+    // <<<<< 2) Flip Image
+
+    // >>>>> 3) Save image and create new Dataset sample updating Bounding Boxes
+    QString newImageFilename = mImageFilename;
+    int dotIdx = newImageFilename.lastIndexOf( "." );
+
+    if( mode == 0)
+    {
+        newImageFilename.insert( dotIdx, "_FV" );
+    }
+    else
+    {
+        newImageFilename.insert( dotIdx, "_FH" );
+    }
+
+    QTrainSetExample* newTs = new QTrainSetExample(newImageFilename);
+
+    newTs->mFullFolderPath = mFullFolderPath;
+    newTs->mRelativeFolderPath = mRelativeFolderPath;
+
+    QString fullPathName = mFullFolderPath;
+    if( !fullPathName.endsWith("/"))
+        fullPathName += "/";
+
+    fullPathName += newImageFilename;
+
+    cv::imwrite( fullPathName.toStdString(), flipped );
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    int idx = 0;
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        // >>>>> Flip BBox
+        double nx,ny;
+
+        if( mode==0 )
+        {
+            nx = bbox->mNormX;
+            ny = 0.5 + (0.5-bbox->mNormY) - bbox->mNormH;
+        }
+        else
+        {
+            nx = 0.5 + (0.5-bbox->mNormX) - bbox->mNormW;
+            ny = bbox->mNormY;
+        }
+        // <<<<< Flip BBox
+
+        newTs->addNewBBox( ++idx, bbox->mLabelIdx, nx, ny, bbox->mNormW, bbox->mNormH );
+    }
+    // <<<<< 4) Create new Dataset sample updating Bounding Boxes
+
+    return newTs;
 }
