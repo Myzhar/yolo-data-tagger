@@ -206,9 +206,9 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 QGraphicsItem* QImageScene::addBBox( QString label, QColor& color, double nx, double ny, double nw, double nh )
 {
-    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+    if( nx<0.0 || ny<0.0 ||
             nw<=0.0 || nh<=0.0 ||
-            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nx>1.0 || ny>1.0 ||
             nw>1.0 || nh>1.0)
     {
         return nullptr;
@@ -226,8 +226,8 @@ QGraphicsItem* QImageScene::addBBox( QString label, QColor& color, double nx, do
 
     addItem( newBox );
 
-    qDebug() << tr("%1: (%2,%3)[%4x%5]").arg(label).arg((nx-nw/2)*scRect.width()).arg((ny-nh/2)*scRect.height())
-             .arg(nw*scRect.width()).arg(nh*scRect.height());
+//    qDebug() << tr("%1: (%2,%3)[%4x%5]").arg(label).arg((nx-nw/2)*scRect.width()).arg((ny-nh/2)*scRect.height())
+//             .arg(nw*scRect.width()).arg(nh*scRect.height());
 
     QPen pen( color );
     pen.setWidth(5);

@@ -34,9 +34,9 @@ void QTrainSetExample::setRelFolderPath( QString fullPath, QString basePath )
 
 void QTrainSetExample::addNewBBox( quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh )
 {
-    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+    if( nx<0.0 || ny<0.0 ||
             nw<=0.0 || nh<=0.0 ||
-            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nx>1.0 || ny>1.0 ||
             nw>1.0 || nh>1.0)
     {
         return;
@@ -500,11 +500,11 @@ QTrainSetExample* QTrainSetExample::cloneFlip( int mode )
         if( mode==0 )
         {
             nx = bbox->mNormX;
-            ny = 0.5 + (0.5-bbox->mNormY) - bbox->mNormH;
+            ny = 0.5 + (0.5-bbox->mNormY);
         }
         else
         {
-            nx = 0.5 + (0.5-bbox->mNormX) - bbox->mNormW;
+            nx = 0.5 + (0.5-bbox->mNormX);
             ny = bbox->mNormY;
         }
         // <<<<< Flip BBox
@@ -526,8 +526,8 @@ QTrainSetExample* QTrainSetExample::cloneFlip( int mode )
 
 QObjBBox QTrainSetExample::rotateBBox( QObjBBox* bbox,  cv::Size imgSize, cv::Mat RT )
 {
-    double x0 = bbox->mNormX*imgSize.width;
-    double y0 = bbox->mNormY*imgSize.height;
+    double x0 = (bbox->mNormX-bbox->mNormW/2)*imgSize.width;  // Note: nx and ny are the center of the BBOX in YOLO !!!
+    double y0 = (bbox->mNormY-bbox->mNormH/2)*imgSize.height; // Note: nx and ny are the center of the BBOX in YOLO !!!
 
     double x1 = x0+bbox->mNormW*imgSize.width;
     double y1 = y0+bbox->mNormH*imgSize.height;
@@ -620,10 +620,10 @@ QObjBBox QTrainSetExample::rotateBBox( QObjBBox* bbox,  cv::Size imgSize, cv::Ma
     maxY = qMax(0,maxY);
 
     QObjBBox newBBox;
-    newBBox.mNormX = static_cast<double>(minX)/imgSize.width;
-    newBBox.mNormY = static_cast<double>(minY)/imgSize.height;;
     newBBox.mNormW = static_cast<double>(maxX-minX)/imgSize.width;
     newBBox.mNormH = static_cast<double>(maxY-minY)/imgSize.height;
+    newBBox.mNormX = static_cast<double>(minX)/imgSize.width + newBBox.mNormW/2;  // Note: nx and ny are the center of the BBOX in YOLO !!!
+    newBBox.mNormY = static_cast<double>(minY)/imgSize.height + newBBox.mNormH/2; // Note: nx and ny are the center of the BBOX in YOLO !!!
 
     return newBBox;
 }
@@ -687,7 +687,7 @@ QTrainSetExample* QTrainSetExample::cloneRotateScale( double angleDeg, double sc
 
         if( bbox->mNormX<0.0 || bbox->mNormY<0.0 ||
                 bbox->mNormW<=0.0 || bbox->mNormH<=0.0 ||
-                bbox->mNormX>=1.0 || bbox->mNormY>=1.0 ||
+                bbox->mNormX>1.0 || bbox->mNormY>1.0 ||
                 bbox->mNormW>1.0 || bbox->mNormH>1.0)
         {
             continue;

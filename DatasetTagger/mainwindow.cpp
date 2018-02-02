@@ -498,9 +498,9 @@ void MainWindow::on_pushButton_fit_image_clicked()
 
 void MainWindow::onNewBbox(QGraphicsItem *item, double nx, double ny, double nw, double nh)
 {
-    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+    if( nx<0.0 || ny<0.0 ||
             nw<=0.0 || nh<=0.0 ||
-            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nx>1.0 || ny>1.0 ||
             nw>1.0 || nh>1.0)
     {
         return;
