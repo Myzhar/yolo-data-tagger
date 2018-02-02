@@ -1,6 +1,8 @@
 #include "include/qtrainsetexample.h"
 
 #include <QDebug>
+#include <iostream>
+
 #include <QDir>
 #include <QHashIterator>
 #include <QTextStream>
@@ -11,6 +13,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
+using namespace std;
 
 QTrainSetExample::QTrainSetExample(QString imgFilename, QObject *parent) : QObject(parent)
 {
@@ -30,6 +34,14 @@ void QTrainSetExample::setRelFolderPath( QString fullPath, QString basePath )
 
 void QTrainSetExample::addNewBBox( quint64 bboxIdx, int labIdx, double nx, double ny, double nw, double nh )
 {
+    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+            nw<=0.0 || nh<=0.0 ||
+            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nw>1.0 || nh>1.0)
+    {
+        return;
+    }
+
     QObjBBox* bbox = new QObjBBox(labIdx,nx,ny,nw,nh);
 
     mBboxMap[bboxIdx] = bbox;
@@ -307,6 +319,14 @@ QTrainSetExample* QTrainSetExample::cloneBlur()
         if(!bbox)
             continue;
 
+        if( bbox->mNormX<0.0 || bbox->mNormY<0.0 ||
+                bbox->mNormW<=0.0 || bbox->mNormH<=0.0 ||
+                bbox->mNormX>=1.0 || bbox->mNormY>=1.0 ||
+                bbox->mNormW>1.0 || bbox->mNormH>1.0)
+        {
+            continue;
+        }
+
         newTs->addNewBBox( ++idx, bbox->mLabelIdx, bbox->mNormX, bbox->mNormY, bbox->mNormW, bbox->mNormH );
     }
     // <<<<< 3) Save image and create new Dataset sample updating Bounding Boxes
@@ -390,6 +410,14 @@ QTrainSetExample* QTrainSetExample::cloneSaltAndPepper()
 
         if(!bbox)
             continue;
+
+        if( bbox->mNormX<0.0 || bbox->mNormY<0.0 ||
+                bbox->mNormW<=0.0 || bbox->mNormH<=0.0 ||
+                bbox->mNormX>=1.0 || bbox->mNormY>=1.0 ||
+                bbox->mNormW>1.0 || bbox->mNormH>1.0)
+        {
+            continue;
+        }
 
         newTs->addNewBBox( ++idx, bbox->mLabelIdx, bbox->mNormX, bbox->mNormY, bbox->mNormW, bbox->mNormH );
     }
@@ -481,7 +509,196 @@ QTrainSetExample* QTrainSetExample::cloneFlip( int mode )
         }
         // <<<<< Flip BBox
 
+        if( bbox->mNormX<0.0 || bbox->mNormY<0.0 ||
+                bbox->mNormW<=0.0 || bbox->mNormH<=0.0 ||
+                bbox->mNormX>=1.0 || bbox->mNormY>=1.0 ||
+                bbox->mNormW>1.0 || bbox->mNormH>1.0)
+        {
+            continue;
+        }
+
         newTs->addNewBBox( ++idx, bbox->mLabelIdx, nx, ny, bbox->mNormW, bbox->mNormH );
+    }
+    // <<<<< 4) Create new Dataset sample updating Bounding Boxes
+
+    return newTs;
+}
+
+QObjBBox QTrainSetExample::rotateBBox( QObjBBox* bbox,  cv::Size imgSize, cv::Mat RT )
+{
+    double x0 = bbox->mNormX*imgSize.width;
+    double y0 = bbox->mNormY*imgSize.height;
+
+    double x1 = x0+bbox->mNormW*imgSize.width;
+    double y1 = y0+bbox->mNormH*imgSize.height;
+
+    cv::Mat RTN(3,3,CV_64F);
+    RTN.at<double>(0,0) = RT.at<double>(0,0);
+    RTN.at<double>(0,1) = RT.at<double>(0,1);
+    RTN.at<double>(0,2) = RT.at<double>(0,2);
+    RTN.at<double>(1,0) = RT.at<double>(1,0);
+    RTN.at<double>(1,1) = RT.at<double>(1,1);
+    RTN.at<double>(1,2) = RT.at<double>(1,2);
+    RTN.at<double>(2,0) = 0.0;
+    RTN.at<double>(2,1) = 0.0;
+    RTN.at<double>(2,2) = 1.0;
+
+    cv::Mat tl(3,1,CV_64F);
+    tl.at<double>(0,0) = x0;
+    tl.at<double>(1,0) = y0;
+    tl.at<double>(2,0) = 1.0;
+
+    cv::Mat tr(3,1,CV_64F);
+    tr.at<double>(0,0) = x1;
+    tr.at<double>(1,0) = y0;
+    tr.at<double>(2,0) = 1.0;
+
+    cv::Mat br(3,1,CV_64F);
+    br.at<double>(0,0) = x1;
+    br.at<double>(1,0) = y1;
+    br.at<double>(2,0) = 1.0;
+
+    cv::Mat bl(3,1,CV_64F);
+    bl.at<double>(0,0) = x0;
+    bl.at<double>(1,0) = y1;
+    bl.at<double>(2,0) = 1.0;
+
+    cv::Mat tlR;
+    cv::Mat trR;
+    cv::Mat brR;
+    cv::Mat blR;
+
+    tlR = RTN*tl;
+    trR = RTN*tr;
+    brR = RTN*br;
+    blR = RTN*bl;
+
+    int minX = 10000;
+    int maxX = 0;
+    int minY = 10000;
+    int maxY = 0;
+
+    cv::Point rTl;
+    rTl.x = static_cast<int>(tlR.at<double>(0,0));
+    rTl.y = static_cast<int>(tlR.at<double>(1,0));
+    minX = rTl.x;
+    maxX = rTl.x;
+    minY = rTl.y;
+    maxY = rTl.y;
+
+    cv::Point rTr;
+    rTr.x = static_cast<int>(trR.at<double>(0,0));
+    rTr.y = static_cast<int>(trR.at<double>(1,0));
+    minX = qMin(minX,rTr.x);
+    maxX = qMax(maxX,rTr.x);
+    minY = qMin(minY,rTr.y);
+    maxY = qMax(maxY,rTr.y);
+
+    cv::Point rBr;
+    rBr.x = static_cast<int>(brR.at<double>(0,0));
+    rBr.y = static_cast<int>(brR.at<double>(1,0));
+    minX = qMin(minX,rBr.x);
+    maxX = qMax(maxX,rBr.x);
+    minY = qMin(minY,rBr.y);
+    maxY = qMax(maxY,rBr.y);
+
+    cv::Point rBl;
+    rBl.x = static_cast<int>(blR.at<double>(0,0));
+    rBl.y = static_cast<int>(blR.at<double>(1,0));
+    minX = qMin(minX,rBl.x);
+    maxX = qMax(maxX,rBl.x);
+    minY = qMin(minY,rBl.y);
+    maxY = qMax(maxY,rBl.y);
+
+    minX = qMax(0,minX);
+    minX = qMin(imgSize.width,minX);
+    maxX = qMin(imgSize.width,maxX);
+    maxX = qMax(0,maxX);
+    minY = qMax(0,minY);
+    minY = qMin(imgSize.height,minY);
+    maxY = qMin(imgSize.height,maxY);
+    maxY = qMax(0,maxY);
+
+    QObjBBox newBBox;
+    newBBox.mNormX = static_cast<double>(minX)/imgSize.width;
+    newBBox.mNormY = static_cast<double>(minY)/imgSize.height;;
+    newBBox.mNormW = static_cast<double>(maxX-minX)/imgSize.width;
+    newBBox.mNormH = static_cast<double>(maxY-minY)/imgSize.height;
+
+    return newBBox;
+}
+
+QTrainSetExample* QTrainSetExample::cloneRotateScale( double angleDeg, double scale )
+{
+    // >>>>> 1) Open sample image
+    QString origFullPathName = mFullFolderPath;
+    if( !origFullPathName.endsWith("/"))
+        origFullPathName += "/";
+
+    origFullPathName += mImageFilename;
+    cv::Mat orig = cv::imread( origFullPathName.toStdString() );
+
+    if( orig.empty() )
+    {
+        qDebug() << tr("Error generation Blurred image: %1 not opened").arg(mFullFolderPath);
+        return nullptr;
+    }
+    // <<<<< 1) Open sample image
+
+    // >>>>> 2) Rotate Image
+    cv::Mat rotated;
+
+    cv::Point2f rotCenter(orig.cols/2., orig.rows/2.);
+    cv::Mat rotMat = cv::getRotationMatrix2D( rotCenter, angleDeg, scale );
+    cv::warpAffine(orig, rotated, rotMat, orig.size());
+
+    // <<<<< 2) Rotate Image
+
+    // >>>>> 3) Save image and create new Dataset sample updating Bounding Boxes
+    QString newImageFilename = mImageFilename;
+    int dotIdx = newImageFilename.lastIndexOf( "." );
+
+    QString suffix = tr("_%1").arg( angleDeg, 3, 'g', 3, QChar('0') );
+    newImageFilename.insert( dotIdx, suffix );
+
+    QTrainSetExample* newTs = new QTrainSetExample(newImageFilename);
+
+    newTs->mFullFolderPath = mFullFolderPath;
+    newTs->mRelativeFolderPath = mRelativeFolderPath;
+
+    QString fullPathName = mFullFolderPath;
+    if( !fullPathName.endsWith("/"))
+        fullPathName += "/";
+
+    fullPathName += newImageFilename;
+
+    cv::imwrite( fullPathName.toStdString(), rotated );
+
+    QHashIterator<quint64,QObjBBox*> iter(mBboxMap);
+    int idx = 0;
+    while (iter.hasNext())
+    {
+        iter.next();
+
+        QObjBBox* bbox = iter.value();
+
+        if(!bbox)
+            continue;
+
+        if( bbox->mNormX<0.0 || bbox->mNormY<0.0 ||
+                bbox->mNormW<=0.0 || bbox->mNormH<=0.0 ||
+                bbox->mNormX>=1.0 || bbox->mNormY>=1.0 ||
+                bbox->mNormW>1.0 || bbox->mNormH>1.0)
+        {
+            continue;
+        }
+
+        // >>>>> Rotate BBox
+        QObjBBox rotBbox = rotateBBox( bbox, orig.size(), rotMat );
+
+        // <<<<< Rotate BBox
+
+        newTs->addNewBBox( ++idx, bbox->mLabelIdx, rotBbox.mNormX, rotBbox.mNormY, rotBbox.mNormW, rotBbox.mNormH );
     }
     // <<<<< 4) Create new Dataset sample updating Bounding Boxes
 

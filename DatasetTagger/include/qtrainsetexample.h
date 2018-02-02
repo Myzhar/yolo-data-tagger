@@ -6,6 +6,8 @@
 #include <QStringList>
 #include "qobjbbox.h"
 
+#include <opencv2/core/core.hpp>
+
 class QTrainSetExample : public QObject
 {
     Q_OBJECT
@@ -34,6 +36,10 @@ public:
     QTrainSetExample* cloneBlur();
     QTrainSetExample* cloneSaltAndPepper();
     QTrainSetExample* cloneFlip( int mode );
+    QTrainSetExample* cloneRotateScale( double angleDeg, double scale );
+
+private:
+    QObjBBox rotateBBox(QObjBBox* bbox,  cv::Size imgSize, cv::Mat RT);
 
 signals:
 

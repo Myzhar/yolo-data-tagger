@@ -4,13 +4,13 @@
 #include <QLocale>
 
 QObjBBox::QObjBBox(int labIdx, double nx, double ny, double nw, double nh)
-    : QObject(NULL)
+    : QObject(nullptr)
 {
     setBBox(labIdx,nx,ny,nw,nh);
 }
 
 QObjBBox::QObjBBox( const QObjBBox& other )
-    : QObject(NULL)
+    : QObject(nullptr)
 {
     mLabelIdx = other.mLabelIdx;
     mNormX = other.mNormX;

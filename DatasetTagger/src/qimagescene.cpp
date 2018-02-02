@@ -7,8 +7,8 @@
 
 QImageScene::QImageScene(QObject *parent)
     : QGraphicsScene(parent)
-    , mImgItem(NULL)
-    , mCurrBBox(NULL)
+    , mImgItem(nullptr)
+    , mCurrBBox(nullptr)
 {
     mDrawingEnabled = false;
     mImgItem = new QGraphicsPixmapItem();
@@ -117,7 +117,7 @@ void QImageScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 void QImageScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    if( mCurrBBox==NULL )
+    if( mCurrBBox==nullptr )
         return;
 
     if( event->buttons() == Qt::LeftButton )
@@ -173,7 +173,7 @@ void QImageScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    if( mCurrBBox==NULL )
+    if( mCurrBBox==nullptr )
         return;
 
     if( event->button() == Qt::LeftButton )
@@ -183,7 +183,7 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         if( rect.width()<5 || rect.height()<5)
         {
             removeItem( mCurrBBox );
-            mCurrBBox = NULL;
+            mCurrBBox = nullptr;
             return;
         }
 
@@ -195,25 +195,39 @@ void QImageScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         qreal normW = (rect.width()/scRect.width());
         qreal normH = (rect.height()/scRect.height());
 
+        normX += normW/2;
+        normY += normH/2;
+
         emit newBBox( mCurrBBox, normX, normY, normW, normH );
 
-        mCurrBBox = NULL;
+        mCurrBBox = nullptr;
     }
 }
 
 QGraphicsItem* QImageScene::addBBox( QString label, QColor& color, double nx, double ny, double nw, double nh )
 {
+    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+            nw<=0.0 || nh<=0.0 ||
+            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nw>1.0 || nh>1.0)
+    {
+        return nullptr;
+    }
+
     QRectF scRect = sceneRect();
 
     if( scRect.width()==0 || scRect.height()==0 )
-        return NULL;
+        return nullptr;
 
     QGraphicsRectItem* newBox = new QGraphicsRectItem( );
 
-    newBox->setRect( nx*scRect.width(), ny*scRect.height(),
+    newBox->setRect( (nx-nw/2)*scRect.width(), (ny-nh/2)*scRect.height(),
                      nw*scRect.width(), nh*scRect.height() );
 
     addItem( newBox );
+
+    qDebug() << tr("%1: (%2,%3)[%4x%5]").arg(label).arg((nx-nw/2)*scRect.width()).arg((ny-nh/2)*scRect.height())
+             .arg(nw*scRect.width()).arg(nh*scRect.height());
 
     QPen pen( color );
     pen.setWidth(5);

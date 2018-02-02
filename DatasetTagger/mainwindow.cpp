@@ -17,11 +17,11 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    mLabelModel(NULL),
-    mImgListModel(NULL),
-    mBBoxListModel(NULL),
-    mScene(NULL),
-    mIniSettings(NULL)
+    mLabelModel(nullptr),
+    mImgListModel(nullptr),
+    mBBoxListModel(nullptr),
+    mScene(nullptr),
+    mIniSettings(nullptr)
 {
     ui->setupUi(this);
 
@@ -145,7 +145,7 @@ void MainWindow::onLabelListCurrentChanged(const QModelIndex &current, const QMo
 
     QStandardItem* item = mLabelModel->item( current.row(), 2 );
 
-    if( item==NULL )
+    if( item==nullptr )
     {
         mScene->enableDrawing(false);
         return;
@@ -211,6 +211,45 @@ void MainWindow::onImageListCurrentChanged(const QModelIndex &current, const QMo
             mDataSet[imageName]->removeBBox( iter.key() );
             mScene->addBBox( fullLabel, color,nx,ny,nw,nh );
         }
+        else
+        {
+            int idx = labIdx;
+
+            QStandardItem* idxItem = new QStandardItem();
+            idxItem->setText( tr("%1").arg(idx,3,10,QChar('0')) );
+            idxItem->setEditable( false );
+            idxItem->setTextAlignment( Qt::AlignHCenter|Qt::AlignVCenter );
+
+            QStandardItem* labelItem = new QStandardItem();
+            QString label = ui->lineEdit_label->text();
+            if( label.isEmpty() )
+            {
+                label = tr("Label_%1").arg(idx,3,10,QChar('0'));
+            }
+            labelItem->setText( label );
+            labelItem->setEditable( true );
+
+            QStandardItem* colorItem = new QStandardItem();
+
+            quint8 r = (idx+9)*30;
+            quint8 g = (idx+6)*60;
+            quint8 b = (idx+3)*90;
+
+            colorItem->setText(  tr("%1,%2,%3").arg(r,3,10,QChar('0')).arg(g,3,10,QChar('0')).arg(b,3,10,QChar('0')) );
+            colorItem->setEditable( false );
+            colorItem->setBackground( QBrush( QColor(r,g,b)) );
+            colorItem->setForeground( QBrush( QColor(255-r,255-g,255-b)) );
+            colorItem->setSelectable(false);
+
+            QList<QStandardItem*> row;
+            row << idxItem << labelItem << colorItem;
+            //mLabelModel->appendRow( row );
+            mLabelModel->insertRow(idx, row);
+
+            ui->tableView_labels->setCurrentIndex( mLabelModel->index( mLabelModel->rowCount()-1, 1 ) );
+
+            mAutoLabNameCount = mLabelModel->rowCount();
+        }
     }
 }
 
@@ -271,7 +310,7 @@ void MainWindow::updateBBoxList()
     if( mBBoxListModel )
     {
         delete mBBoxListModel;
-        mBBoxListModel = NULL;
+        mBBoxListModel = nullptr;
     }
 
     QString imageName = mImgListModel->data( ui->listView_images->currentIndex() ).toString();
@@ -339,7 +378,7 @@ void MainWindow::updateImgList()
                    this, &MainWindow::onImageListCurrentChanged );
 
         delete mImgListModel;
-        mImgListModel = NULL;
+        mImgListModel = nullptr;
     }
 
     ui->listView_images->setViewMode( QListView::ListMode );
@@ -459,6 +498,14 @@ void MainWindow::on_pushButton_fit_image_clicked()
 
 void MainWindow::onNewBbox(QGraphicsItem *item, double nx, double ny, double nw, double nh)
 {
+    if( (nx-nw/2)<0.0 || (ny-nh/2)<0.0 ||
+            nw<=0.0 || nh<=0.0 ||
+            (nx+nw/2)>=1.0 || (ny+nh/2)>=1.0 ||
+            nw>1.0 || nh>1.0)
+    {
+        return;
+    }
+
     QString imageName = mImgListModel->data( ui->listView_images->currentIndex() ).toString();
 
     if(imageName.isEmpty())
@@ -526,6 +573,205 @@ void MainWindow::on_pushButton_save_clicked()
 
     if( ui->groupBox_augmentation->isChecked() )
     {
+        QHash<QString, QTrainSetExample*> augDS; // Dataset of the augmented samples
+
+        if( ui->checkBox_aug_rot_30->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 30° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 30., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_rot_330->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 330° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 330., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_rot_45->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 45° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 45., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_rot_315->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 315° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 315., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_rot_60->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 60° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 60., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        if( ui->checkBox_aug_rot_300->isChecked() )
+        {
+            count = 0;
+
+            // >>>>> Add Flipped images and update list
+            prgDlg.setLabelText( tr("Adding 300° rotated samples...") );
+            prgDlg.setMinimum( 0 );
+            prgDlg.setMaximum( mDataSet.size() );
+
+            QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
+            while (iter.hasNext())
+            {
+                iter.next();
+
+                QTrainSetExample* sample = iter.value();
+
+                QTrainSetExample* spSample = sample->cloneRotateScale( 300., 1. );
+
+                if(spSample)
+                {
+                    spSample->setRelFolderPath( mImgFolder, mBaseFolder );
+                    augDS[spSample->getImgName()] = spSample;
+                }
+
+                prgDlg.setValue( ++count );
+                QApplication::processEvents( QEventLoop::AllEvents, 5 );
+            }
+
+            //mDataSet = newDS; // Dataset NOT Update to NOT apply next filters also to the new generated images
+            // <<<<< Add Flipped images and update list
+        }
+
+        // >>>>> Fusing augmented dataset with original Dataset to apply the next filters also to the new samples
+        mDataSet.unite( augDS );
+        // <<<<< Fusing augmented dataset with original Dataset to apply the next filters also to the new samples
+
+
         if( ui->checkBox_aug_H_flip->isChecked() )
         {
             count = 0;
@@ -556,7 +802,7 @@ void MainWindow::on_pushButton_save_clicked()
                 QApplication::processEvents( QEventLoop::AllEvents, 5 );
             }
 
-            mDataSet = newDS;
+            mDataSet = newDS; // Dataset Update to apply next filters also to the new generated images
             // <<<<< Add Flipped images and update list
         }
 
@@ -590,7 +836,7 @@ void MainWindow::on_pushButton_save_clicked()
                 QApplication::processEvents( QEventLoop::AllEvents, 5 );
             }
 
-            mDataSet = newDS;
+            mDataSet = newDS; // Dataset Update to apply next filters also to the new generated images
             // <<<<< Add Flipped images and update list
         }
 
@@ -624,7 +870,7 @@ void MainWindow::on_pushButton_save_clicked()
                 QApplication::processEvents( QEventLoop::AllEvents, 5 );
             }
 
-            mDataSet = newDS;
+            mDataSet = newDS; // Dataset Update to apply next filters also to the new generated images
             // <<<<< Add Salt&Pepper images and update list
         }
 
@@ -660,7 +906,7 @@ void MainWindow::on_pushButton_save_clicked()
                 QApplication::processEvents( QEventLoop::AllEvents, 5 );
             }
 
-            mDataSet = newDS;
+            mDataSet = newDS; // Dataset Update to apply next filters also to the new generated images
             // <<<<< Add blurred images and update list
         }
     }
@@ -699,18 +945,20 @@ void MainWindow::on_pushButton_save_clicked()
     QHashIterator<QString, QTrainSetExample*> iter(mDataSet);
     while (iter.hasNext())
     {
+        bool first = !iter.hasPrevious();
+
         iter.next();
 
         QString imageName = iter.value()->getImgName();
 
-        mDataSet[imageName]->saveYoloFormat();
-
-        if(!iter.hasPrevious())
+        if(first)
         {
             relPath = mDataSet[imageName]->getRelPath();
             if( !relPath.endsWith("/"))
                 relPath += "/";
         }
+
+        mDataSet[imageName]->saveYoloFormat();
 
         QString dataLine = mDataSet[imageName]->getRelPath();
         if( !dataLine.endsWith("/"))
