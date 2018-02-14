@@ -287,6 +287,8 @@ void MainWindow::on_pushButton_base_folder_clicked()
         return;
     }
 
+    ui->spinBox->setValue(0);
+
     saveSettings();
 
     ui->lineEdit_base_folder_path->setText(mBaseFolder);
@@ -420,6 +422,8 @@ void MainWindow::on_pushButton_img_folder_clicked()
         return;
     }
 
+    ui->spinBox->setValue(0);
+
     saveSettings();
 
     if( initDatasetFromFolder() )
@@ -544,6 +548,9 @@ void MainWindow::on_spinBox_valueChanged(int arg1)
 
     int step = static_cast<int>(count/valCount+0.5);
 
+    int effective_valCount=0;
+    int effective_tsCount=0;
+
     for( int r=0; r<mImgListModel->rowCount(); r++ )
     {
         QString imageName = mImgListModel->data( mImgListModel->index( r,0 ) ).toString();
@@ -551,12 +558,18 @@ void MainWindow::on_spinBox_valueChanged(int arg1)
         if( (r%step)==0 )
         {
             mDataSet[imageName]->setTestSet(true);
+            effective_valCount++;
         }
         else
         {
             mDataSet[imageName]->setTestSet(false);
+            effective_tsCount++;
         }
     }
+
+    ui->label_total_samples->setText( tr("Total: %1").arg( count ) );
+    ui->label_trainset_samples->setText( tr("Training Set: %1").arg(effective_tsCount) );
+    ui->label_valset_samples->setText( tr("Validation Set: %1").arg(effective_valCount) );
 
     updateImgList();
 }
